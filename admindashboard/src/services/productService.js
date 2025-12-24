@@ -93,6 +93,28 @@ export const fetchProducts = async () => {
 };
 
 /**
+ * Fetch single product by ID
+ * @param {string} id - Product ID
+ * @returns {Promise<Object>}
+ */
+export const fetchProductById = async (id) => {
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) {
+        if (error.code === 'PGRST116') {
+            throw new Error('Product not found');
+        }
+        throw new Error(`Failed to fetch product: ${error.message}`);
+    }
+
+    return data;
+};
+
+/**
  * Update existing product
  * @param {string} id - Product ID
  * @param {Object} productData - Updated product data
@@ -129,18 +151,34 @@ export const updateProduct = async (id, productData) => {
 };
 
 /**
- * Delete product from database
+ * Delete product and its image from database
  * @param {string} id - Product ID
  * @returns {Promise<void>}
  */
 export const deleteProduct = async (id) => {
-    const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id);
+    // First, get the product to find its image
+    try {
+        const product = await fetchProductById(id);
 
-    if (error) {
-        throw new Error(`Failed to delete product: ${error.message}`);
+        // Delete the product from database
+        const { error } = await supabase
+            .from('products')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            throw new Error(`Failed to delete product: ${error.message}`);
+        }
+
+        // Delete the image from storage (if it exists)
+        if (product.image_url) {
+            // Extract image path from URL
+            const urlParts = product.image_url.split('/');
+            const imagePath = urlParts[urlParts.length - 1];
+            await deleteProductImage(imagePath);
+        }
+    } catch (error) {
+        throw error;
     }
 };
 

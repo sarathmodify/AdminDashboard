@@ -1,10 +1,15 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { uploadProductImage, insertProduct } from '../../services/productService';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { fetchProductById, updateProduct, uploadProductImage, deleteProductImage } from '../../services/productService';
 import { validateProductForm, validateImageFile } from '../../utils/validation';
 
-export default function ProductAdd() {
+export default function ProductEdit() {
+    const { id } = useParams();
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [currentImageUrl, setCurrentImageUrl] = useState(null);
+    const [newImageFile, setNewImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -15,9 +20,10 @@ export default function ProductAdd() {
         price: '',
         discount: '',
         category: '',
-        stock: '',
-        image: null
+        stock: ''
     });
+
+
 
     // Category options
     const categories = [
@@ -29,6 +35,36 @@ export default function ProductAdd() {
         { value: 'accessories', label: 'Accessories' }
     ];
 
+    // Fetch product data on mount
+    useEffect(() => {
+        loadProduct();
+    }, [id]);
+
+    const loadProduct = async () => {
+        try {
+            setLoading(true);
+            const data = await fetchProductById(id);
+
+            // Pre-fill form with existing data
+            setFormData({
+                productName: data.name,
+                description: data.description,
+                price: data.price.toString(),
+                discount: data.discount ? data.discount.toString() : '',
+                category: data.category,
+                stock: data.stock.toString()
+            });
+
+            setCurrentImageUrl(data.image_url);
+            setError(null);
+        } catch (err) {
+            console.error('Error loading product:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Handle input changes
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -36,7 +72,7 @@ export default function ProductAdd() {
             ...prev,
             [name]: value
         }));
-        // Clear error for this field when user starts typing
+        // Clear error for this field
         if (errors[name]) {
             setErrors(prev => ({
                 ...prev,
@@ -45,10 +81,9 @@ export default function ProductAdd() {
         }
     };
 
-    // Handle image upload
+    // Handle new image selection
     const handleImageChange = (e) => {
         const file = e.target.files[0];
-        console.log(file, 'file');
         if (file) {
             // Validate image file
             const imageError = validateImageFile(file);
@@ -60,10 +95,7 @@ export default function ProductAdd() {
                 return;
             }
 
-            setFormData(prev => ({
-                ...prev,
-                image: file
-            }));
+            setNewImageFile(file);
 
             // Create preview
             const reader = new FileReader();
@@ -80,41 +112,19 @@ export default function ProductAdd() {
         }
     };
 
-    // Remove image
-    const removeImage = () => {
-        setFormData(prev => ({
-            ...prev,
-            image: null
-        }));
+    // Remove new image (revert to original)
+    const removeNewImage = () => {
+        setNewImageFile(null);
         setImagePreview(null);
-        // Reset file input
         const fileInput = document.getElementById('image-upload');
         if (fileInput) fileInput.value = '';
     };
 
     // Validate form
     const validateForm = () => {
-        const validationErrors = validateProductForm(formData, true); // requireImage = true for add
+        const validationErrors = validateProductForm(formData, false); // requireImage = false for edit
         setErrors(validationErrors);
         return Object.keys(validationErrors).length === 0;
-    };
-
-    // Reset form function
-    const resetForm = () => {
-        setFormData({
-            productName: '',
-            description: '',
-            price: '',
-            discount: '',
-            category: '',
-            stock: '',
-            image: null
-        });
-        setImagePreview(null);
-        setErrors({});
-
-        const fileInput = document.getElementById('image-upload');
-        if (fileInput) fileInput.value = '';
     };
 
     // Handle form submission
@@ -128,10 +138,23 @@ export default function ProductAdd() {
         setIsSubmitting(true);
 
         try {
-            // Step 1: Upload image to Supabase Storage
-            const { url: imageUrl } = await uploadProductImage(formData.image);
+            let imageUrl = currentImageUrl; // Keep existing by default
 
-            // Step 2: Insert product into database
+            // If user uploaded a new image
+            if (newImageFile) {
+                // Upload new image
+                const { url } = await uploadProductImage(newImageFile);
+                imageUrl = url;
+
+                // Delete old image from storage
+                if (currentImageUrl) {
+                    const urlParts = currentImageUrl.split('/');
+                    const oldImagePath = urlParts[urlParts.length - 1];
+                    await deleteProductImage(oldImagePath);
+                }
+            }
+
+            // Update product
             const productData = {
                 name: formData.productName,
                 description: formData.description,
@@ -142,20 +165,13 @@ export default function ProductAdd() {
                 imageUrl: imageUrl
             };
 
-            const newProduct = await insertProduct(productData);
-            console.log('Product added to Supabase:', newProduct);
+            await updateProduct(id, productData);
 
-            // Reset form
-            resetForm();
-
-            // Show success message
-            alert('Product added successfully!');
-
-            // Navigate back to product list
+            alert('Product updated successfully!');
             navigate('/products');
         } catch (error) {
-            console.error('Error adding product:', error);
-            alert(error.message || 'Failed to add product. Please try again.');
+            console.error('Error updating product:', error);
+            alert(error.message || 'Failed to update product. Please try again.');
         } finally {
             setIsSubmitting(false);
         }
@@ -165,6 +181,42 @@ export default function ProductAdd() {
     const handleCancel = () => {
         navigate('/products');
     };
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <div className="text-center">
+                    <svg className="animate-spin h-12 w-12 text-blue-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p className="text-gray-600 font-medium">Loading product...</p>
+                </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <div className="text-center px-4">
+                    <svg className="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Error Loading Product</h2>
+                    <p className="text-gray-600 mb-6">{error}</p>
+                    <button
+                        onClick={() => navigate('/products')}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        Back to Products
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
@@ -178,10 +230,10 @@ export default function ProductAdd() {
                         Products
                     </button>
                     <span>/</span>
-                    <span className="text-gray-900">Add Product</span>
+                    <span className="text-gray-900">Edit Product</span>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Add New Product</h1>
-                <p className="text-sm text-gray-600 mt-1">Fill in the details to add a new product to your inventory</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Edit Product</h1>
+                <p className="text-sm text-gray-600 mt-1">Update product details and save changes</p>
             </div>
 
             {/* Form Card */}
@@ -375,51 +427,57 @@ export default function ProductAdd() {
                         {/* Image Upload */}
                         <div className="mb-6">
                             <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                Product Image <span className="text-red-500">*</span>
+                                Product Image
                             </label>
 
-                            {!imagePreview ? (
-                                <div className={`border-2 border-dashed rounded-lg p-8 text-center transition-all ${errors.image
-                                    ? 'border-red-300 bg-red-50'
-                                    : 'border-gray-300 hover:border-blue-400 bg-gray-50'
-                                    }`}>
-                                    <input
-                                        type="file"
-                                        id="image-upload"
-                                        accept="image/*"
-                                        onChange={handleImageChange}
-                                        className="hidden"
-                                    />
-                                    <label htmlFor="image-upload" className="cursor-pointer">
-                                        <div className="flex flex-col items-center">
-                                            <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                            </svg>
-                                            <p className="text-sm font-medium text-gray-700 mb-1">
-                                                Click to upload or drag and drop
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                PNG, JPG, GIF up to 5MB
-                                            </p>
-                                        </div>
-                                    </label>
-                                </div>
-                            ) : (
+                            {/* Show current image or new image preview */}
+                            {imagePreview || currentImageUrl ? (
                                 <div className="relative inline-block">
                                     <img
-                                        src={imagePreview}
-                                        alt="Preview"
+                                        src={imagePreview || currentImageUrl}
+                                        alt="Product"
                                         className="w-full max-w-md h-64 object-cover rounded-lg border-2 border-gray-200"
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={removeImage}
-                                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg transition-all"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                        </svg>
-                                    </button>
+                                    {imagePreview && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={removeNewImage}
+                                                className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-2 rounded-full shadow-lg transition-all"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                </svg>
+                                            </button>
+                                            <span className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-3 py-1 rounded-full">
+                                                New Image
+                                            </span>
+                                        </>
+                                    )}
+                                    {!imagePreview && (
+                                        <div className="mt-3">
+                                            <input
+                                                type="file"
+                                                id="image-upload"
+                                                accept="image/*"
+                                                onChange={handleImageChange}
+                                                className="hidden"
+                                            />
+                                            <label
+                                                htmlFor="image-upload"
+                                                className="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 cursor-pointer transition-colors"
+                                            >
+                                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                Change Image
+                                            </label>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50">
+                                    <p className="text-gray-500 text-sm">No image available</p>
                                 </div>
                             )}
 
@@ -457,10 +515,10 @@ export default function ProductAdd() {
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                    Adding Product...
+                                    Updating Product...
                                 </span>
                             ) : (
-                                'Add Product'
+                                'Update Product'
                             )}
                         </button>
                     </div>

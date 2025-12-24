@@ -1,6 +1,8 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const RecentOrdersTable = () => {
+    const navigate = useNavigate();
     // Dummy order data
     const orders = [
         { id: '#ORD-1234', customer: 'John Doe', amount: 245.50, status: 'completed', date: '2025-12-12' },
@@ -54,7 +56,10 @@ const RecentOrdersTable = () => {
                         <p className="text-xs sm:text-sm text-gray-500">Latest transactions from your store</p>
                     </div>
 
-                    <button className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg w-full sm:w-auto">
+                    <button
+                        onClick={() => navigate('/orders')}
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-lg transition-colors duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg w-full sm:w-auto"
+                    >
                         <span>View All</span>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -89,6 +94,7 @@ const RecentOrdersTable = () => {
                         {orders.map((order, index) => (
                             <tr
                                 key={order.id}
+                                onClick={() => navigate(`/orders/ORD-${1234 + index}`)}
                                 className="hover:bg-purple-50 transition-colors duration-150 cursor-pointer group"
                             >
                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -125,8 +131,12 @@ const RecentOrdersTable = () => {
 
             {/* Mobile Card View */}
             <div className="md:hidden divide-y divide-gray-100">
-                {orders.map((order) => (
-                    <div key={order.id} className="p-4 hover:bg-purple-50 transition-colors duration-150">
+                {orders.map((order, index) => (
+                    <div
+                        key={order.id}
+                        onClick={() => navigate(`/orders/ORD-${1234 + index}`)}
+                        className="p-4 hover:bg-purple-50 transition-colors duration-150 cursor-pointer"
+                    >
                         <div className="flex items-start justify-between mb-3">
                             <div>
                                 <p className="text-sm font-semibold text-purple-600 mb-1">{order.id}</p>
