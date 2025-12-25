@@ -6,6 +6,8 @@ import DashboardLayout from "./components/layout/DashboardLayout";
 import ProductList from "./pages/Products/ProductList";
 import ProductAdd from "./pages/Products/ProductAdd";
 import ProductEdit from "./pages/Products/ProductEdit";
+// Customers imports
+import CustomerList from "./pages/Customers/CustomerList";
 // Orders imports (Phase 1)
 import OrderList from "./pages/Orders/OrderList";
 import OrderDetails from "./pages/Orders/OrderDetails";
@@ -30,6 +32,9 @@ function App() {
           <Route path="/products" element={<ProductList />} />
           <Route path="/products/add" element={<ProductAdd />} />
           <Route path="/products/edit/:id" element={<ProductEdit />} />
+
+          {/* Customers routes */}
+          <Route path="/customers" element={<CustomerList />} />
 
           {/* Orders routes (Phase 1 - Testing) */}
           <Route path="/orders-test" element={<OrderServiceTest />} />
