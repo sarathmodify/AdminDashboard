@@ -24,3 +24,5 @@ yarn-debug.log*
 yarn-error.log*
 
 /.agent
+*.md2
+!README.md

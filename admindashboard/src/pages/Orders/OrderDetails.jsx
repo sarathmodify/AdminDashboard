@@ -42,7 +42,7 @@ export default function OrderDetails() {
 
     // Handle status update
     const handleUpdateStatus = async (newStatus) => {
-        if (!confirm(`Update order status to "${newStatus}"?`)) {
+        if (!window.confirm(`Update order status to "${newStatus}"?`)) {
             return;
         }
 
@@ -61,7 +61,7 @@ export default function OrderDetails() {
 
     // Handle cancel order
     const handleCancelOrder = async () => {
-        if (!confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
+        if (!window.confirm('Are you sure you want to cancel this order? This action cannot be undone.')) {
             return;
         }
 

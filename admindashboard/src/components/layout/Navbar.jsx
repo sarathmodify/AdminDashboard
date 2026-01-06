@@ -2,11 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import adminlogo from "../../assests/images/adminlogo.svg";
+import { useAuth } from "../../Context/AuthContext.jsx";
+import RoleBadge from "../../pages/Settings/components/RoleBadge";
 
 export default function Navbar({ onMobileSidebarToggle }) {
     const navigate = useNavigate();
     const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
     const dropdownRef = useRef(null);
+    const { user, role } = useAuth();
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -27,15 +30,13 @@ export default function Navbar({ onMobileSidebarToggle }) {
     };
 
     const handleProfileClick = () => {
-        console.log("Navigate to Profile");
+        navigate("/settings");
         setIsProfileDropdownOpen(false);
-        // Add navigation logic here
     };
 
     const handlePasswordChangeClick = () => {
-        console.log("Navigate to Password Change");
+        navigate("/settings");
         setIsProfileDropdownOpen(false);
-        // Add navigation logic here
     };
 
     const handleLogout = async () => {
@@ -50,6 +51,22 @@ export default function Navbar({ onMobileSidebarToggle }) {
         } catch (error) {
             console.error("Logout failed:", error);
         }
+    };
+
+    // Get user initials for avatar
+    const getUserInitials = () => {
+        if (user?.full_name) {
+            return user.full_name
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .slice(0, 2);
+        }
+        if (user?.email) {
+            return user.email.slice(0, 2).toUpperCase();
+        }
+        return 'U';
     };
 
     return (
@@ -76,13 +93,23 @@ export default function Navbar({ onMobileSidebarToggle }) {
                     >
                         {/* User Avatar */}
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold shadow-md">
-                            <span className="text-sm">AD</span>
+                            <span className="text-sm">{getUserInitials()}</span>
                         </div>
 
-                        {/* User Name */}
+                        {/* User Name and Role Badge */}
                         <div className="text-left">
-                            <p className="text-sm font-semibold text-gray-800">Admin User</p>
-                            <p className="text-xs text-gray-500">Administrator</p>
+                            <p className="text-sm font-semibold text-gray-800">
+                                {user?.full_name || user?.email || 'User'}
+                            </p>
+                            {role && (
+                                <div className="mt-1">
+                                    <RoleBadge
+                                        roleName={role.name}
+                                        displayName={role.display_name}
+                                        size="small"
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {/* Dropdown Arrow */}

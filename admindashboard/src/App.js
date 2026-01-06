@@ -13,40 +13,85 @@ import OrderList from "./pages/Orders/OrderList";
 import OrderDetails from "./pages/Orders/OrderDetails";
 import OrderServiceTest from "./pages/Orders/OrderServiceTest";
 import ComponentsShowcase from "./pages/Orders/ComponentsShowcase";
+import SupabaseDebugger from "./pages/SupabaseDebugger";
+import RLSDebugger from "./pages/RLSDebugger";
+import GuardDemo from "./pages/GuardDemo";
+import ServiceTester from "./pages/ServiceTester";
+// Settings page (Phase 5)
+import Settings from "./pages/Settings/Settings";
 
 function App() {
-  return (
-    <div>
-      <Routes>
-        <Route path="/" element={<Login />} />
+    console.log('Rendering components...');
+    return (
+        <div>
+            <Routes>
+                <Route path="/" element={<Login />} />
 
-        {/* Protected routes with shared layout */}
-        <Route
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/products" element={<ProductList />} />
-          <Route path="/products/add" element={<ProductAdd />} />
-          <Route path="/products/edit/:id" element={<ProductEdit />} />
+                {/* Protected routes with shared layout */}
+                <Route
+                    element={
+                        <ProtectedRoute>
+                            <DashboardLayout />
+                        </ProtectedRoute>
+                    }
+                >
+                    <Route path="/dashboard" element={<Dashboard />} />
 
-          {/* Customers routes */}
-          <Route path="/customers" element={<CustomerList />} />
+                    {/* Products routes - Protected by permissions */}
+                    <Route path="/products" element={<ProductList />} />
+                    <Route
+                        path="/products/add"
+                        element={
+                            <ProtectedRoute requiredPermissions={['can_create_products']}>
+                                <ProductAdd />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/products/edit/:id"
+                        element={
+                            <ProtectedRoute requiredPermissions={['can_edit_products']}>
+                                <ProductEdit />
+                            </ProtectedRoute>
+                        }
+                    />
 
-          {/* Orders routes (Phase 1 - Testing) */}
-          <Route path="/orders-test" element={<OrderServiceTest />} />
-          <Route path="/orders" element={<OrderList />} />
-          <Route path="/orders/:id" element={<OrderDetails />} />
+                    {/* Customers routes - Protected by permissions */}
+                    <Route path="/customers" element={<CustomerList />} />
 
-          {/* Phase 2 - Components Showcase */}
-          <Route path="/components-showcase" element={<ComponentsShowcase />} />
-        </Route>
-      </Routes>
-    </div>
-  );
+                    {/* Orders routes - Protected by permissions */}
+                    <Route path="/orders-test" element={<OrderServiceTest />} />
+                    <Route path="/orders" element={<OrderList />} />
+                    <Route
+                        path="/orders/:id"
+                        element={
+                            <ProtectedRoute requiredPermissions={['can_view_orders']}>
+                                <OrderDetails />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    {/* Phase 2 - Components Showcase */}
+                    <Route path="/components-showcase" element={<ComponentsShowcase />} />
+
+                    {/* Supabase Connection Debugger */}
+                    <Route path="/supabase-debug" element={<SupabaseDebugger />} />
+
+                    {/* RLS Policy Debugger */}
+                    <Route path="/rls-debug" element={<RLSDebugger />} />
+
+                    {/* Phase 3 - Service Tester */}
+                    <Route path="/service-test" element={<ServiceTester />} />
+
+                    {/* Phase 4 - Guard Demo */}
+                    <Route path="/guard-demo" element={<GuardDemo />} />
+
+                    {/* Phase 5 - Settings Page */}
+                    <Route path="/settings" element={<Settings />} />
+                </Route>
+            </Routes>
+        </div>
+    );
 }
 
 export default App;

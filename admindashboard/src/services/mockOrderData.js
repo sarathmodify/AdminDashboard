@@ -135,7 +135,7 @@ function generateMockOrder(index) {
     const totals = calculateTotals(items); // Calculate totals
     const createdAt = generateRandomDate(); // Generate random date
 
-    console.log(createdAt, "createdAt")
+    //  console.log(createdAt, "createdAt")
 
     // Payment status: paid if delivered, random for pending, always unpaid for cancelled
     let paymentStatus = 'paid';
