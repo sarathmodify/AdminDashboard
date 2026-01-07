@@ -57,22 +57,12 @@ export const fetchUserWithRoleAndPermissions = async (userId, userEmail) => {
             .maybeSingle();
 
         const endTime = performance.now();
-
-        // Check for PGRST200 error (missing foreign key relationship)
-        if (error && error.code === 'PGRST200') {
-            console.warn('⚠️ Foreign key relationships missing. Falling back to sequential queries...');
-            console.warn('💡 Run fix_foreign_keys_complete.sql to enable optimized query');
-
-            // Fallback to sequential queries
-            return await fetchUserWithRoleAndPermissionsSequential(userId, userEmail);
-        }
+        console.log(`⚡ Query completed in ${(endTime - startTime).toFixed(2)}ms`);
 
         if (error) {
             console.error('❌ Error fetching user data:', error);
             return { data: null, error };
         }
-
-        console.log(`⚡ Optimized query completed in ${(endTime - startTime).toFixed(2)}ms`);
 
         if (!data) {
             // Profile doesn't exist
@@ -118,85 +108,9 @@ export const fetchUserWithRoleAndPermissions = async (userId, userEmail) => {
 
     } catch (error) {
         console.error('❌ Exception in fetchUserWithRoleAndPermissions:', error);
-        console.warn('⚠️ Attempting fallback to sequential queries...');
-
-        // Try fallback on any error
-        try {
-            return await fetchUserWithRoleAndPermissionsSequential(userId, userEmail);
-        } catch (fallbackError) {
-            console.error('❌ Fallback also failed:', fallbackError);
-            return { data: null, error };
-        }
-    }
-};
-
-/**
- * FALLBACK: Fetch user data using sequential queries (old method)
- * Used when foreign keys are missing (PGRST200 error)
- * @param {string} userId - User ID
- * @param {string} userEmail - User email
- * @returns {Promise<{data: object|null, error: object|null}>}
- */
-const fetchUserWithRoleAndPermissionsSequential = async (userId, userEmail) => {
-    try {
-        console.log('🔄 Using sequential queries (fallback method)...');
-        const startTime = performance.now();
-        
-        // Query 1: Get user profile
-        const { data: profileData, error: profileError } = await fetchUserProfile(userId);
-        if (profileError) {
-            return { data: null, error: profileError };
-        }
-
-        // Query 2: Get user role
-        const { data: roleData, error: roleError } = await fetchUserRole(userId);
-        
-        let role = null;
-        let permissions = [];
-
-        if (!roleError && roleData && roleData.roles) {
-            role = {
-                id: roleData.roles.id,
-                name: roleData.roles.name,
-                display_name: roleData.roles.display_name,
-                description: roleData.roles.description
-            };
-
-            // Query 3: Get role permissions
-            const { data: permsData, error: permsError } = await fetchRolePermissions(roleData.roles.id);
-            if (!permsError && permsData) {
-                permissions = permsData.map(rp => rp.permissions?.name).filter(Boolean);
-            }
-        }
-
-        const result = {
-            user: {
-                id: userId,
-                email: userEmail,
-                full_name: profileData?.full_name || userEmail?.split('@')[0] || 'User',
-                phone: profileData?.phone || null,
-                avatar_url: profileData?.avatar_url || null
-            },
-            role,
-            permissions
-        };
-
-        const endTime = performance.now();
-        console.log(`⚡ Sequential queries completed in ${(endTime - startTime).toFixed(2)}ms`);
-        console.log('✅ User data loaded (sequential):', {
-            user: result.user.full_name,
-            role: result.role?.display_name || 'No role',
-            permissionsCount: result.permissions.length
-        });
-
-        return { data: result, error: null };
-
-    } catch (error) {
-        console.error('❌ Exception in sequential fallback:', error);
         return { data: null, error };
     }
 };
-
 
 export const fetchUserProfile = async (userId) => {
     try {

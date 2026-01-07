@@ -164,6 +164,7 @@ export const AuthProvider = ({ children }) => {
 
     const hasRole = useCallback((roleName) => {
         if (!role) return false;
+        console.log(role, roleName, 'hasRole');
         return role.name === roleName;
     }, [role]); // Only recreate when 'role' changes
 
@@ -244,7 +245,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
-    console.log('✅ useAuth:', context);
     if (context === undefined) {
         throw new Error('useAuth must be used within an AuthProvider');
     }

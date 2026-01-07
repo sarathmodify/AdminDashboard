@@ -8,7 +8,7 @@ import { updateUserProfile, uploadAvatar, changePassword } from '../../../servic
  */
 const ProfileUpdateForm = () => {
     const { user, refreshUser } = useAuth();
-    console.log(user, ':userp')
+
     const [formData, setFormData] = useState({
         full_name: '',
         phone: ''

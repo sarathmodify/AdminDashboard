@@ -22,7 +22,7 @@ const ProtectedRoute = ({
     const [session, setSession] = useState(null);
     const [loading, setLoading] = useState(true);
     const { role, hasAllPermissions, hasAnyPermission, loading: authLoading } = useAuth();
-    console.log(role, allowedRoles, requiredPermissions, requireAllPermissions, hasAnyPermission, authLoading, 'protected route')
+
     useEffect(() => {
         // Get initial session
         supabase.auth.getSession().then(({ data }) => {
