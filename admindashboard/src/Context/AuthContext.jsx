@@ -1,25 +1,28 @@
 /**
  * AuthContext - React Context for Authentication State
  * Uses authService.js for all backend calls
+ * Redux-style state management with useReducer
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import * as authService from '../services/authService';
+import { authReducer, initialState } from './authReducer';
+import { AUTH_ACTIONS } from './authActionTypes';
 
 // Create the context
 const AuthContext = createContext({});
 
 /**
  * AuthProvider Component
- * Manages authentication state using authService
+ * Manages authentication state using Redux-style reducer
  */
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [role, setRole] = useState(null);
-    const [permissions, setPermissions] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [session, setSession] = useState(null);
+    // Redux-style state management
+    const [state, dispatch] = useReducer(authReducer, initialState);
+
+    // Destructure state for backward compatibility
+    const { user, role, permissions, loading, session, error } = state;
 
     // Load user data from backend
     const loadUserData = async (userId, userEmail) => {
@@ -34,16 +37,26 @@ export const AuthProvider = ({ children }) => {
                 if (profileError.code === 'RLS_POLICY_VIOLATION') {
                     console.error('RLS policy error on user_profiles table');
 
-                    setUser({ id: userId, email: userEmail, full_name: userEmail?.split('@')[0] || 'User', phone: null, avatar_url: null });
-                    setRole(null);
-                    setPermissions([]);
+                    dispatch({
+                        type: AUTH_ACTIONS.SET_AUTH_DATA,
+                        payload: {
+                            user: { id: userId, email: userEmail, full_name: userEmail?.split('@')[0] || 'User', phone: null, avatar_url: null },
+                            role: null,
+                            permissions: []
+                        }
+                    });
                     return;
                 } else if (profileError.code === 'TIMEOUT') {
                     console.error('Query timeout on user_profiles');
 
-                    setUser({ id: userId, email: userEmail, full_name: userEmail?.split('@')[0] || 'User', phone: null, avatar_url: null });
-                    setRole(null);
-                    setPermissions([]);
+                    dispatch({
+                        type: AUTH_ACTIONS.SET_AUTH_DATA,
+                        payload: {
+                            user: { id: userId, email: userEmail, full_name: userEmail?.split('@')[0] || 'User', phone: null, avatar_url: null },
+                            role: null,
+                            permissions: []
+                        }
+                    });
                     return;
                 } else if (profileError.code === 'PGRST116') {
                     // Profile doesn't exist, create it
@@ -63,16 +76,22 @@ export const AuthProvider = ({ children }) => {
                 avatar_url: profileData?.avatar_url || null,
             };
             console.log('✅ Profile fetched:', userProfile?.avatar_url);
-            setUser(userProfile);
 
             // Step 2: Get user role
             const { data: roleData, error: roleError } = await authService.fetchUserRole(userId);
 
             if (roleError || !roleData || !roleData.roles) {
-                // No role assigned
-                setRole(null);
-                setPermissions([]);
-                return; // Exit but app still works
+                // No role assigned - set user but no role/permissions
+                console.log('⚠️ No role assigned');
+                dispatch({
+                    type: AUTH_ACTIONS.SET_AUTH_DATA,
+                    payload: {
+                        user: userProfile,
+                        role: null,
+                        permissions: []
+                    }
+                });
+                return;
             }
             console.log('✅ User role fetched:', roleData);
             const roleInfo = {
@@ -80,16 +99,24 @@ export const AuthProvider = ({ children }) => {
                 display_name: roleData.roles.display_name,
                 description: roleData.roles.description,
             };
-            setRole(roleInfo);
+            // Role will be set with permissions below
 
 
             // Step 3: Get role permissions
             const { data: permsData, error: permsError } = await authService.fetchRolePermissions(roleData.roles.id);
 
             if (permsError || !permsData || permsData.length === 0) {
-                // No permissions assigned
-                setPermissions([]);
-                return; // Exit but app still works
+                // No permissions assigned - set user and role but no permissions
+                console.log('⚠️ No permissions assigned');
+                dispatch({
+                    type: AUTH_ACTIONS.SET_AUTH_DATA,
+                    payload: {
+                        user: userProfile,
+                        role: roleInfo,
+                        permissions: []
+                    }
+                });
+                return;
             }
 
             console.log('✅ Role permissions fetched:', permsData);
@@ -98,21 +125,35 @@ export const AuthProvider = ({ children }) => {
                 .map(rp => rp.permissions?.name)
                 .filter(Boolean);
             console.log('✅ User permissions:', userPermissions);
-            setPermissions(userPermissions);
+
+            // Success! Dispatch all data at once
+            dispatch({
+                type: AUTH_ACTIONS.SET_AUTH_DATA,
+                payload: {
+                    user: userProfile,
+                    role: roleInfo,
+                    permissions: userPermissions
+                }
+            });
 
         } catch (error) {
-            console.error('Error loading user data:', error);
+            console.error('❌ Error loading user data:', error);
 
             // Set basic user info even on error
-            setUser({
-                id: userId,
-                email: userEmail,
-                full_name: userEmail?.split('@')[0] || 'User',
-                phone: null,
-                avatar_url: null,
+            dispatch({
+                type: AUTH_ACTIONS.SET_AUTH_DATA,
+                payload: {
+                    user: {
+                        id: userId,
+                        email: userEmail,
+                        full_name: userEmail?.split('@')[0] || 'User',
+                        phone: null,
+                        avatar_url: null,
+                    },
+                    role: null,
+                    permissions: []
+                }
             });
-            setRole(null);
-            setPermissions([]);
         }
     };
 
@@ -122,7 +163,7 @@ export const AuthProvider = ({ children }) => {
             try {
                 const { data: { session: currentSession } } = await supabase.auth.getSession();
                 console.log('✅ Current session:', currentSession, session);
-                setSession(currentSession);
+                dispatch({ type: AUTH_ACTIONS.SET_SESSION, payload: currentSession });
 
                 if (currentSession?.user) {
                     await loadUserData(currentSession.user.id, currentSession.user.email);
@@ -130,7 +171,7 @@ export const AuthProvider = ({ children }) => {
             } catch (error) {
                 console.error('Error initializing auth:', error);
             } finally {
-                setLoading(false);
+                dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
             }
         };
 
@@ -139,18 +180,16 @@ export const AuthProvider = ({ children }) => {
         // Listen for auth state changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (_event, newSession) => {
-                setSession(newSession);
+                dispatch({ type: AUTH_ACTIONS.SET_SESSION, payload: newSession });
 
                 if (newSession?.user) {
                     await loadUserData(newSession.user.id, newSession.user.email);
                 } else {
                     // User logged out
-                    setUser(null);
-                    setRole(null);
-                    setPermissions([]);
+                    dispatch({ type: AUTH_ACTIONS.CLEAR_AUTH_DATA });
                 }
 
-                setLoading(false);
+                dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: false });
             }
         );
 
