@@ -1,5 +1,9 @@
 import Login from "./pages/Login/Login";
 import { Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { useDispatch } from "react-redux";
+import { supabase } from "./lib/supabaseClient";
+import { setSession, setLoading, loadUserData, logout } from "./store/slices/authSlice";
 import Dashboard from "./pages/Dashboard/Dashboard";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import DashboardLayout from "./components/layout/DashboardLayout";
@@ -21,6 +25,48 @@ import ServiceTester from "./pages/ServiceTester";
 import Settings from "./pages/Settings/Settings";
 
 function App() {
+    const dispatch = useDispatch();
+
+    // Initialize auth on mount
+    useEffect(() => {
+        console.log('🔧 Initializing Redux auth...');
+
+        // Get initial session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            console.log('✅ Current session:', session);
+            dispatch(setSession(session));
+
+            if (session?.user) {
+                dispatch(loadUserData({
+                    userId: session.user.id,
+                    userEmail: session.user.email
+                }));
+            } else {
+                dispatch(setLoading(false));
+            }
+        });
+
+        // Listen for auth state changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (_event, session) => {
+                console.log('🔄 Auth state changed:', _event);
+                dispatch(setSession(session));
+
+                if (session?.user) {
+                    dispatch(loadUserData({
+                        userId: session.user.id,
+                        userEmail: session.user.email
+                    }));
+                } else {
+                    dispatch(logout());
+                    dispatch(setLoading(false));
+                }
+            }
+        );
+
+        return () => subscription.unsubscribe();
+    }, [dispatch]);
+
     console.log('Rendering components...');
     return (
         <div>

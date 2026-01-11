@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { Navigate } from "react-router-dom";
-import { useAuth } from "../../Context/AuthContext.jsx";
+import { useAuth } from "../../hooks/useAuth";
 import AccessDenied from "../../pages/AccessDenied";
 
 /**

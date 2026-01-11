@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../Context/AuthContext.jsx';
+import { useAuth } from '../../../hooks/useAuth';
 import { updateUserProfile, uploadAvatar, changePassword } from '../../../services/authService';
 
 /**

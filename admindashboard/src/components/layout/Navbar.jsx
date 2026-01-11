@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabaseClient";
 import adminlogo from "../../assests/images/adminlogo.svg";
-import { useAuth } from "../../Context/AuthContext.jsx";
+import { useAuth } from "../../hooks/useAuth";
 import RoleBadge from "../../pages/Settings/components/RoleBadge";
 
 export default function Navbar({ onMobileSidebarToggle }) {

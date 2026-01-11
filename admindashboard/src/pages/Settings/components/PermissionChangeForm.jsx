@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../../Context/AuthContext.jsx';
+import { useAuth } from '../../../hooks/useAuth';
 import { fetchRoles, fetchPermissions, getRolePermissions, updateRolePermissions } from '../../../services/roleService';
 import { assignUserRole } from '../../../services/authService';
 import { getUsersWithRoles } from '../../../services/roleService';
