@@ -1,5 +1,5 @@
 import { computeHeadingLevel } from "@testing-library/dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 const Sidebar = () => {
@@ -8,7 +8,6 @@ const Sidebar = () => {
     const [activeItem, setActiveItem] = useState("Dashboard");
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [expandedMenus, setExpandedMenus] = useState({});
-
     const menuItems = [
         {
             name: "Dashboard",
@@ -66,9 +65,50 @@ const Sidebar = () => {
         }
     ];
 
+    // Sync active state with current URL (handles browser back/forward)
+    useEffect(() => {
+        const currentPath = location.pathname;
+        console.log('🔄 URL changed to:', currentPath);
+
+        // Find matching menu item by path
+        let matchedItem = null;
+
+        // Check top-level menu items
+        for (const item of menuItems) {
+            if (item.path === currentPath) {
+                matchedItem = item.name;
+                break;
+            }
+
+            // Check sub-items
+            if (item.subItems) {
+                for (const subItem of item.subItems) {
+                    if (subItem.path === currentPath) {
+                        matchedItem = subItem.name;
+                        // Also expand the parent menu
+                        setExpandedMenus(prev => ({
+                            ...prev,
+                            [item.name]: true
+                        }));
+                        break;
+                    }
+                }
+                if (matchedItem) break;
+            }
+        }
+
+        // Update active item if match found
+        if (matchedItem) {
+            console.log('✅ Setting active item to:', matchedItem);
+            setActiveItem(matchedItem);
+        }
+    }, [location.pathname]); // Only depend on pathname changes
+
+
     const handleMenuClick = (itemName, itemPath) => {
         setActiveItem(itemName);
         if (itemPath) {
+            console.log(itemPath, "itemPath")
             navigate(itemPath);
         }
     };

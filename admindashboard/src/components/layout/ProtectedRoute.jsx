@@ -3,6 +3,7 @@ import { supabase } from "../../lib/supabaseClient";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import AccessDenied from "../../pages/AccessDenied";
+import Spinner from "../common/Spinner";
 
 /**
  * Enhanced ProtectedRoute Component
@@ -41,18 +42,7 @@ const ProtectedRoute = ({
 
     // Show loading state while checking session or auth context
     if (loading || authLoading) {
-        return (
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: '60vh',
-                fontSize: '16px',
-                color: '#6b7280'
-            }}>
-                Loading...
-            </div>
-        );
+        return <Spinner message="Loading..." />;
     }
 
     // Redirect if no session (not authenticated)
