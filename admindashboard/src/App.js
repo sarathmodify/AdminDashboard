@@ -27,13 +27,13 @@ import Settings from "./pages/Settings/Settings";
 function App() {
     const dispatch = useDispatch();
 
-    // Initialize auth on mount
+    // Initialize auth ONCE on app mount
     useEffect(() => {
-        console.log('🔧 Initializing Redux auth...');
+        console.log('🔧 Initializing auth (App.js - runs once)...');
 
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
-            console.log('✅ Current session:', session);
+            console.log('✅ Initial session:', session);
             dispatch(setSession(session));
 
             if (session?.user) {
@@ -46,17 +46,28 @@ function App() {
             }
         });
 
-        // Listen for auth state changes
+        // Listen for REAL auth changes (not tab focus)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
-                console.log('🔄 Auth state changed:', _event);
+            async (event, session) => {
+                console.log('🔄 Auth event:', event);
+
+                // Ignore TOKEN_REFRESHED (happens on tab focus)
+                if (event === 'TOKEN_REFRESHED') {
+                    console.log('⏭️ Skipping TOKEN_REFRESHED');
+                    return;
+                }
+
+                // Handle real auth events
+                console.log('🔄 Processing auth event:', event);
                 dispatch(setSession(session));
 
                 if (session?.user) {
-                    dispatch(loadUserData({
-                        userId: session.user.id,
-                        userEmail: session.user.email
-                    }));
+                    if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+                        dispatch(loadUserData({
+                            userId: session.user.id,
+                            userEmail: session.user.email
+                        }));
+                    }
                 } else {
                     dispatch(logout());
                     dispatch(setLoading(false));
@@ -67,7 +78,6 @@ function App() {
         return () => subscription.unsubscribe();
     }, [dispatch]);
 
-    console.log('Rendering components...');
     return (
         <div>
             <Routes>
